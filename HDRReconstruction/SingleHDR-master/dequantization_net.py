@@ -1,5 +1,6 @@
 import tensorflow as tf
 
+
 class Dequantization_net(object):
     def __init__(self, is_train=True):
         self.is_train = is_train

@@ -23,8 +23,6 @@ ARGS = parser.parse_args()
 # ---
 
 
-
-
 # --- graph
 
 _clip = lambda x: tf.clip_by_value(x, 0, 1)
@@ -47,6 +45,7 @@ def rand_quantize(
 
     return img
 
+
 def log10(x):
     numerator = tf.log(x)
     denominator = tf.log(tf.constant(10, dtype=numerator.dtype))
@@ -59,7 +58,6 @@ def build_graph(
         t,  # [b]
         is_training,
 ):
-
     b, h, w, c, = get_tensor_shape(hdr)
     b, k, = get_tensor_shape(crf)
     b, = get_tensor_shape(t)
@@ -68,8 +66,9 @@ def build_graph(
 
     # Augment Poisson and Gaussian noise
     sigma_s = 0.08 / 6 * tf.random_uniform([tf.shape(_hdr_t)[0], 1, 1, 3], minval=0.0, maxval=1.0,
-                                                     dtype=tf.float32, seed=1)
-    sigma_c = 0.005 * tf.random_uniform([tf.shape(_hdr_t)[0], 1, 1, 3], minval=0.0, maxval=1.0, dtype=tf.float32, seed=1)
+                                           dtype=tf.float32, seed=1)
+    sigma_c = 0.005 * tf.random_uniform([tf.shape(_hdr_t)[0], 1, 1, 3], minval=0.0, maxval=1.0, dtype=tf.float32,
+                                        seed=1)
     noise_s_map = sigma_s * _hdr_t
     noise_s = tf.random_normal(shape=tf.shape(_hdr_t), seed=1) * noise_s_map
     temp_x = _hdr_t + noise_s
@@ -89,12 +88,11 @@ def build_graph(
     jpeg_img_list = []
     for i in range(ARGS.batch_size):
         II = quantized_hdr_8bit[i]
-        II = tf.image.adjust_jpeg_quality(II, int(round(float(i)/float(ARGS.batch_size-1)*10.0+90.0)))
+        II = tf.image.adjust_jpeg_quality(II, int(round(float(i) / float(ARGS.batch_size - 1) * 10.0 + 90.0)))
         jpeg_img_list.append(II)
     jpeg_img = tf.stack(jpeg_img_list, 0)
     jpeg_img_float = tf.cast(jpeg_img, tf.float32) / 255.0
     jpeg_img_float.set_shape([None, 256, 256, 3])
-
 
     # loss mask to exclude over-/under-exposed regions
     gray = tf.image.rgb_to_grayscale(jpeg_img)
@@ -114,7 +112,7 @@ def build_graph(
     loss = get_l2_loss_with_mask(pred, ldr)
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
-        train_op = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(tf.reduce_mean(loss*loss_mask))
+        train_op = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(tf.reduce_mean(loss * loss_mask))
 
     mse = tf.reduce_mean((pred - ldr) ** 2)
     psnr = 20.0 * log10(1.0) - 10.0 * log10(mse)
@@ -186,4 +184,3 @@ for it in range(ARGS.it_num):
     if it == 0 or it % 10000 == 9999:
         summary_writer.add_summary(summary_val, it)
         logging.info('test')
-

@@ -123,4 +123,3 @@ def rand_quantize(
     s   = (2**bit) - 1
     
     return quantize(img, s)
-
